@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BISTRO - Intein Splicing Predictor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container-main {
+            max-width: 1000px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #667eea;
+            font-weight: bold;
+        }
+        .header p {
+            color: #666;
+            margin-bottom: 0;
+        }
+        .tab-content {
+            margin-top: 20px;
+        }
+        .nav-tabs .nav-link {
+            color: #667eea;
+            font-weight: 500;
+            border: none;
+            border-bottom: 3px solid transparent;
+        }
+        .nav-tabs .nav-link.active {
+            color: #fff;
+            background-color: #667eea;
+            border-color: #667eea;
+            border-radius: 5px 5px 0 0;
+        }
+        .btn-predict {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .btn-predict:hover {
+            background-color: #764ba2;
+            border-color: #764ba2;
+        }
+        .result-card {
+            background: #f8f9ff;
+            border-left: 5px solid #667eea;
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .result-compatible {
+            border-left-color: #28a745;
+        }
+        .result-not-compatible {
+            border-left-color: #dc3545;
+        }
+        .badge-custom {
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+        .loading {
+            display: none;
+        }
+        .model-info-box {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .intein-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .intein-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-main">
+        <!-- Header -->
+        <div class="header">
+            <h1>🧬 BISTRO</h1>
+            <p>Boolean-logic-based Intein-Splicing Topology Rule Operator</p>
+            <p style="font-size: 12px; color: #999;">Predict protein intein splicing compatibility</p>
+        </div>
+
+        <!-- Model Info -->
+        <div class="model-info-box" id="modelInfo">
+            <strong>Loading model information...</strong>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="predict-tab" data-bs-toggle="tab" data-bs-target="#predict" type="button">Predict</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="hunt-n-tab" data-bs-toggle="tab" data-bs-target="#hunt-n" type="button">Find N-term Partners</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="hunt-c-tab" data-bs-toggle="tab" data-bs-target="#hunt-c" type="button">Find C-term Partners</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="search-seq-tab" data-bs-toggle="tab" data-bs-target="#search-seq" type="button">🔍 Search Custom Sequence</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="inteins-tab" data-bs-toggle="tab" data-bs-target="#inteins" type="button">All Inteins</button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Predict Tab -->
+            <div class="tab-pane fade show active" id="predict" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>N-terminal Intein</strong></label>
+                        <select class="form-select" id="nTermIntein"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>C-terminal Intein</strong></label>
+                        <select class="form-select" id="cTermIntein"></select>
+                    </div>
+                </div>
+                <button class="btn btn-predict btn-lg w-100 mt-3" onclick="predictCompatibility()">
+                    <span class="spinner-border spinner-border-sm loading" role="status" aria-hidden="true"></span>
+                    Predict Compatibility
+                </button>
+                <div id="predictResult"></div>
+            </div>
+
+            <!-- Hunt N-term Tab -->
+            <div class="tab-pane fade" id="hunt-n" role="tabpanel">
+                <div class="mt-4">
+                    <label class="form-label"><strong>Select C-terminal Intein</strong></label>
+                    <select class="form-select" id="cTermInteinHunt"></select>
+                    <button class="btn btn-predict btn-lg w-100 mt-3" onclick="huntNPartners()">
+                        <span class="spinner-border spinner-border-sm loading" role="status" aria-hidden="true"></span>
+                        Find N-terminal Partners
+                    </button>
+                    <div id="huntNResult"></div>
+                </div>
+            </div>
+
+            <!-- Hunt C-term Tab -->
+            <div class="tab-pane fade" id="hunt-c" role="tabpanel">
+                <div class="mt-4">
+                    <label class="form-label"><strong>Select N-terminal Intein</strong></label>
+                    <select class="form-select" id="nTermInteinHunt"></select>
+                    <button class="btn btn-predict btn-lg w-100 mt-3" onclick="huntCPartners()">
+                        <span class="spinner-border spinner-border-sm loading" role="status" aria-hidden="true"></span>
+                        Find C-terminal Partners
+                    </button>
+                    <div id="huntCResult"></div>
+                </div>
+            </div>
+
+            <!-- Search Custom Sequence Tab -->
+            <div class="tab-pane fade" id="search-seq" role="tabpanel">
+                <div class="mt-4">
+                    <label class="form-label"><strong>Enter Protein Sequence</strong></label>
+                    <textarea class="form-control" id="customSequence" rows="4" placeholder="Paste amino acid sequence (e.g., MLGPG...)" style="font-family: monospace;"></textarea>
+                    <label class="form-label mt-3"><strong>Sequence Type</strong></label>
+                    <select class="form-select" id="sequenceType">
+                        <option value="n">N-terminal Intein</option>
+                        <option value="c">C-terminal Intein</option>
+                    </select>
+                    <button class="btn btn-predict btn-lg w-100 mt-3" onclick="searchCustomSequence()">
+                        <span class="spinner-border spinner-border-sm loading" role="status" aria-hidden="true"></span>
+                        Find Best Match & Compatible Partners
+                    </button>
+                    <div id="searchSeqResult"></div>
+                </div>
+            </div>
+
+            <!-- All Inteins Tab -->
+            <div class="tab-pane fade" id="inteins" role="tabpanel">
+                <div class="mt-4">
+                    <div id="inteinsList" class="intein-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE = '/api';
+        let inteins = [];
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModelInfo();
+            loadInteins();
+        });
+
+        // Load model info
+        async function loadModelInfo() {
+            try {
+                const res = await fetch(`${API_BASE}/model_info`);
+                const data = await res.json();
+                const info = `
+                    <strong>Model Status:</strong> ${data.status} | 
+                    <strong>Mode:</strong> ${data.feature_mode}
+                `;
+                document.getElementById('modelInfo').innerHTML = info;
+            } catch (err) {
+                document.getElementById('modelInfo').innerHTML = '<strong>Model info unavailable</strong>';
+            }
+        }
+
+        // Load all inteins
+        async function loadInteins() {
+            try {
+                const res = await fetch(`${API_BASE}/inteins`);
+                inteins = await res.json();
+                
+                // Populate dropdowns
+                const selects = ['#nTermIntein', '#cTermIntein', '#nTermInteinHunt', '#cTermInteinHunt'];
+                selects.forEach(sel => {
+                    const selectEl = document.querySelector(sel);
+                    inteins.forEach(intein => {
+                        const option = document.createElement('option');
+                        option.value = intein.name;
+                        option.textContent = `${intein.name} (${intein.org})`;
+                        selectEl.appendChild(option);
+                    });
+                    if (selectEl.options.length > 0) selectEl.selectedIndex = 0;
+                });
+
+                // List all inteins
+                let html = '<table class="table table-sm">';
+                html += '<thead><tr><th>Name</th><th>Organism</th><th>Group</th><th>Self-Only</th></tr></thead><tbody>';
+                inteins.forEach(intein => {
+                    html += `<tr>
+                        <td><strong>${intein.name}</strong></td>
+                        <td>${intein.org}</td>
+                        <td><span class="badge bg-info">${intein.group}</span></td>
+                        <td>${intein.selfOnly ? '✓' : '—'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('inteinsList').innerHTML = html;
+            } catch (err) {
+                console.error('Error loading inteins:', err);
+            }
+        }
+
+        // Predict compatibility
+        async function predictCompatibility() {
+            const nName = document.getElementById('nTermIntein').value;
+            const cName = document.getElementById('cTermIntein').value;
+            
+            if (!nName || !cName) {
+                alert('Please select both inteins');
+                return;
+            }
+
+            showLoading('predictResult');
+            try {
+                const res = await fetch(`${API_BASE}/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ n_name: nName, c_name: cName })
+                });
+                const data = await res.json();
+
+                let className = data.prediction === 'Not compatible' ? 'result-not-compatible' : 'result-compatible';
+                let html = `
+                    <div class="result-card ${className}">
+                        <h5>${nName} + ${cName}</h5>
+                        <p><strong>Prediction:</strong> <span class="badge bg-primary">${data.prediction}</span></p>
+                        <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(1)}%</p>
+                        <p style="font-size: 12px; color: #999;"><strong>Source:</strong> ${data.source}</p>
+                    </div>
+                `;
+                document.getElementById('predictResult').innerHTML = html;
+            } catch (err) {
+                document.getElementById('predictResult').innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+            }
+        }
+
+        // Hunt N-term partners
+        async function huntNPartners() {
+            const cName = document.getElementById('cTermInteinHunt').value;
+            
+            if (!cName) {
+                alert('Please select a C-terminal intein');
+                return;
+            }
+
+            showLoading('huntNResult');
+            try {
+                const res = await fetch(`${API_BASE}/hunt_n`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ c_name: cName })
+                });
+                const results = await res.json();
+
+                let html = `<h5 class="mt-4">N-terminal Partners for ${cName}:</h5>`;
+                if (results.length === 0) {
+                    html += '<p class="text-muted">No compatible partners found.</p>';
+                } else {
+                    html += '<table class="table table-sm table-striped"><thead><tr><th>N-term</th><th>Organism</th><th>Prediction</th><th>Confidence</th><th>Source</th></tr></thead><tbody>';
+                    results.forEach(r => {
+                        let predBg = r.prediction === 'Not compatible' ? 'danger' : 'success';
+                        html += `<tr>
+                            <td><strong>${r.n_name}</strong></td>
+                            <td><small>${r.n_org}</small></td>
+                            <td><span class="badge bg-${predBg}">${r.prediction}</span></td>
+                            <td>${(r.confidence * 100).toFixed(1)}%</td>
+                            <td><small>${r.source}</small></td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                }
+                document.getElementById('huntNResult').innerHTML = html;
+            } catch (err) {
+                document.getElementById('huntNResult').innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+            }
+        }
+
+        // Hunt C-term partners
+        async function huntCPartners() {
+            const nName = document.getElementById('nTermInteinHunt').value;
+            
+            if (!nName) {
+                alert('Please select an N-terminal intein');
+                return;
+            }
+
+            showLoading('huntCResult');
+            try {
+                const res = await fetch(`${API_BASE}/hunt_c`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ n_name: nName })
+                });
+                const results = await res.json();
+
+                let html = `<h5 class="mt-4">C-terminal Partners for ${nName}:</h5>`;
+                if (results.length === 0) {
+                    html += '<p class="text-muted">No compatible partners found.</p>';
+                } else {
+                    html += '<table class="table table-sm table-striped"><thead><tr><th>C-term</th><th>Organism</th><th>Prediction</th><th>Confidence</th><th>Source</th></tr></thead><tbody>';
+                    results.forEach(r => {
+                        let predBg = r.prediction === 'Not compatible' ? 'danger' : 'success';
+                        html += `<tr>
+                            <td><strong>${r.c_name}</strong></td>
+                            <td><small>${r.c_org}</small></td>
+                            <td><span class="badge bg-${predBg}">${r.prediction}</span></td>
+                            <td>${(r.confidence * 100).toFixed(1)}%</td>
+                            <td><small>${r.source}</small></td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                }
+                document.getElementById('huntCResult').innerHTML = html;
+            } catch (err) {
+                document.getElementById('huntCResult').innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+            }
+        }
+
+        // Search custom sequence
+        async function searchCustomSequence() {
+            const sequence = document.getElementById('customSequence').value.trim();
+            const terminalType = document.getElementById('sequenceType').value;
+            
+            if (!sequence) {
+                alert('Please enter a protein sequence');
+                return;
+            }
+
+            if (sequence.length < 5) {
+                alert('Sequence must be at least 5 amino acids long');
+                return;
+            }
+
+            showLoading('searchSeqResult');
+            try {
+                const res = await fetch(`${API_BASE}/search_custom_sequence`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sequence: sequence, terminal_type: terminalType })
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    throw new Error(error.error);
+                }
+                
+                const data = await res.json();
+
+                let html = `<div class="result-card result-compatible mt-4">
+                    <h5>🎯 Best Match Found</h5>
+                    <p><strong>Intein Name:</strong> ${data.best_match.name}</p>
+                    <p><strong>Organism:</strong> ${data.best_match.org}</p>
+                    <p><strong>Similarity Score:</strong> <span class="badge bg-success">${(data.best_match.similarity * 100).toFixed(1)}%</span></p>
+                </div>`;
+
+                if (data.compatible_partners.length === 0) {
+                    html += '<p class="text-muted mt-4">No compatible partners found.</p>';
+                } else {
+                    const colName = terminalType === 'n' ? 'C-term Partner' : 'N-term Partner';
+                    html += `<h5 class="mt-4">✨ ${data.compatible_partners.length} Compatible Partners Found</h5>`;
+                    html += '<table class="table table-sm table-striped"><thead><tr><th>' + colName + '</th><th>Organism</th><th>Prediction</th><th>Confidence</th></tr></thead><tbody>';
+                    data.compatible_partners.forEach(p => {
+                        const name = terminalType === 'n' ? p.c_name : p.n_name;
+                        const org = terminalType === 'n' ? p.c_org : p.n_org;
+                        const predBg = p.prediction === 'Not compatible' ? 'danger' : 'success';
+                        html += `<tr>
+                            <td><strong>${name}</strong></td>
+                            <td><small>${org}</small></td>
+                            <td><span class="badge bg-${predBg}">${p.prediction}</span></td>
+                            <td>${(p.confidence * 100).toFixed(1)}%</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                }
+                document.getElementById('searchSeqResult').innerHTML = html;
+            } catch (err) {
+                document.getElementById('searchSeqResult').innerHTML = `<div class="alert alert-danger mt-4">Error: ${err.message}</div>`;
+            }
+        }
+
+        // Utility: show loading spinner
+        function showLoading(elementId) {
+            const elem = document.getElementById(elementId);
+            const spinner = elem.querySelector('.loading');
+            if (spinner) spinner.style.display = 'inline-block';
+        }
+    </script>
+</body>
+</html>

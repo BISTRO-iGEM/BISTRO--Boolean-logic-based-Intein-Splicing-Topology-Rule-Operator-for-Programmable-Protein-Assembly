@@ -1,0 +1,12 @@
+{
+  "feature_mode": "Physicochemical",
+  "n_features": 38,
+  "classes": [
+    "Circularise",
+    "Linearise",
+    "Not compatible"
+  ],
+  "cv_f1_mean": 0.26326156458399863,
+  "cv_f1_std": 0.014413579373070386,
+  "n_train_pairs": 441
+}
